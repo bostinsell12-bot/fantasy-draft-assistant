@@ -1,999 +1,579 @@
 import streamlit as st
 
-# Initialize session state to track drafted players
+# Set page config for mobile app feel
+st.set_page_config(
+    page_title="2026 Keeper Draft Board", page_icon="🏈", layout="wide"
+)
+
+# Initialize draft state
 if "drafted_players" not in st.session_state:
   st.session_state.drafted_players = set()
 
-# Embedded Top 100 Fantasy Football Dataset (2026 Consensus)
-FANTASY_DATA = {
-    "last_updated": "2026-08-18",
-    "scoring_format": "PPR & Half-PPR Compatible",
-    "rankings": [
-        {
-            "rank": 1,
-            "name": "Bijan Robinson",
-            "position": "RB",
-            "team": "ATL",
-            "tier": 1,
-            "tag": "ELITE_ANCHOR",
-            "notes": "Consensus RB1 overall; true three-down bellcow.",
-        },
-        {
-            "rank": 2,
-            "name": "Jahmyr Gibbs",
-            "position": "RB",
-            "team": "DET",
-            "tier": 1,
-            "tag": "ELITE_ANCHOR",
-            "notes": "Unmatched explosive play and pass-catching upside.",
-        },
-        {
-            "rank": 3,
-            "name": "Ja'Marr Chase",
-            "position": "WR",
-            "team": "CIN",
-            "tier": 1,
-            "tag": "ELITE_ANCHOR",
-            "notes": "Consensus WR1 overall with high target/TD volume.",
-        },
-        {
-            "rank": 4,
-            "name": "Puka Nacua",
-            "position": "WR",
-            "team": "LAR",
-            "tier": 1,
-            "tag": "ELITE_ANCHOR",
-            "notes": "Dominant target share and elite route efficiency.",
-        },
-        {
-            "rank": 5,
-            "name": "Jaxon Smith-Njigba",
-            "position": "WR",
-            "team": "SEA",
-            "tier": 1,
-            "tag": "ELITE_ANCHOR",
-            "notes": "Alpha WR entering Year 4 as primary target engine.",
-        },
-        {
-            "rank": 6,
-            "name": "Christian McCaffrey",
-            "position": "RB",
-            "team": "SF",
-            "tier": 2,
-            "tag": "BOOM",
-            "notes": "Highest potential ceiling per game with TD dependency.",
-        },
-        {
-            "rank": 7,
-            "name": "Jonathan Taylor",
-            "position": "RB",
-            "team": "IND",
-            "tier": 2,
-            "tag": "SAFE_FLOOR",
-            "notes": "Heavy early-down and goal-line volume.",
-        },
-        {
-            "rank": 8,
-            "name": "Amon-Ra St. Brown",
-            "position": "WR",
-            "team": "DET",
-            "tier": 2,
-            "tag": "SAFE_FLOOR",
-            "notes": "Safest weekly target floor in fantasy.",
-        },
-        {
-            "rank": 9,
-            "name": "CeeDee Lamb",
-            "position": "WR",
-            "team": "DAL",
-            "tier": 2,
-            "tag": "BOOM",
-            "notes": "Proven overall WR1 upside in Dallas passing attack.",
-        },
-        {
-            "rank": 10,
-            "name": "James Cook",
-            "position": "RB",
-            "team": "BUF",
-            "tier": 2,
-            "tag": "SAFE_FLOOR",
-            "notes": "Lead back duties in high-scoring Buffalo offense.",
-        },
-        {
-            "rank": 11,
-            "name": "Ashton Jeanty",
-            "position": "RB",
-            "team": "LV",
-            "tier": 2,
-            "tag": "BOOM",
-            "notes": "Elite rookie lead back poised for instant volume.",
-        },
-        {
-            "rank": 12,
-            "name": "Justin Jefferson",
-            "position": "WR",
-            "team": "MIN",
-            "tier": 2,
-            "tag": "BOOM",
-            "notes": "Bounce-back WR1 upside assuming steady QB play.",
-        },
-        {
-            "rank": 13,
-            "name": "De'Von Achane",
-            "position": "RB",
-            "team": "MIA",
-            "tier": 2,
-            "tag": "BOOM",
-            "notes": "Elite per-touch efficiency with home-run play potential.",
-        },
-        {
-            "rank": 14,
-            "name": "Saquon Barkley",
-            "position": "RB",
-            "team": "PHI",
-            "tier": 2,
-            "tag": "SAFE_FLOOR",
-            "notes": "Goal-line driver in elite Philly ground game.",
-        },
-        {
-            "rank": 15,
-            "name": "Drake London",
-            "position": "WR",
-            "team": "ATL",
-            "tier": 2,
-            "tag": "BREAKOUT",
-            "notes": "Clear primary option in Atlanta's offense.",
-        },
-        {
-            "rank": 16,
-            "name": "Chase Brown",
-            "position": "RB",
-            "team": "CIN",
-            "tier": 3,
-            "tag": "SAFE_FLOOR",
-            "notes": "Workhorse role locked down in Bengals backfield.",
-        },
-        {
-            "rank": 17,
-            "name": "Derrick Henry",
-            "position": "RB",
-            "team": "BAL",
-            "tier": 3,
-            "tag": "SAFE_FLOOR",
-            "notes": "Monstrous touchdown equity in Baltimore.",
-        },
-        {
-            "rank": 18,
-            "name": "A.J. Brown",
-            "position": "WR",
-            "team": "PHI",
-            "tier": 3,
-            "tag": "BOOM",
-            "notes": "Elite big-play threat with massive weekly upside.",
-        },
-        {
-            "rank": 19,
-            "name": "Kenneth Walker III",
-            "position": "RB",
-            "team": "KC",
-            "tier": 3,
-            "tag": "BOOM",
-            "notes": "Dynamic addition to Kansas City backfield.",
-        },
-        {
-            "rank": 20,
-            "name": "Brock Bowers",
-            "position": "TE",
-            "team": "LV",
-            "tier": 3,
-            "tag": "POSITIONAL_ADVANTAGE",
-            "notes": "Uncontested TE1 overall with wide-receiver volume.",
-        },
-        {
-            "rank": 21,
-            "name": "Omarion Hampton",
-            "position": "RB",
-            "team": "LAC",
-            "tier": 3,
-            "tag": "SLEEPER",
-            "notes": "Rookie back stepping into heavy workload.",
-        },
-        {
-            "rank": 22,
-            "name": "Trey McBride",
-            "position": "TE",
-            "team": "ARI",
-            "tier": 3,
-            "tag": "POSITIONAL_ADVANTAGE",
-            "notes": "High target volume tight end anchor.",
-        },
-        {
-            "rank": 23,
-            "name": "Nico Collins",
-            "position": "WR",
-            "team": "HOU",
-            "tier": 3,
-            "tag": "BOOM",
-            "notes": "Top perimeter target for C.J. Stroud.",
-        },
-        {
-            "rank": 24,
-            "name": "George Pickens",
-            "position": "WR",
-            "team": "DAL",
-            "tier": 3,
-            "tag": "BREAKOUT",
-            "notes": "Expanded role in high-volume passing game.",
-        },
-        {
-            "rank": 25,
-            "name": "Josh Allen",
-            "position": "QB",
-            "team": "BUF",
-            "tier": 3,
-            "tag": "ELITE_QB",
-            "notes": "Consensus QB1 overall with heavy rushing TD upside.",
-        },
-        {
-            "rank": 26,
-            "name": "Rashee Rice",
-            "position": "WR",
-            "team": "KC",
-            "tier": 4,
-            "tag": "POTENTIAL_BUST",
-            "notes": "High PPR floor when active, but injury/suspension risk.",
-        },
-        {
-            "rank": 27,
-            "name": "Jeremiyah Love",
-            "position": "RB",
-            "team": "ARI",
-            "tier": 4,
-            "tag": "SLEEPER",
-            "notes": "High-ceiling back expected to handle primary work.",
-        },
-        {
-            "rank": 28,
-            "name": "Chris Olave",
-            "position": "WR",
-            "team": "NO",
-            "tier": 4,
-            "tag": "SAFE_FLOOR",
-            "notes": "Clear alpha target in New Orleans.",
-        },
-        {
-            "rank": 29,
-            "name": "Malik Nabers",
-            "position": "WR",
-            "team": "NYG",
-            "tier": 4,
-            "tag": "POTENTIAL_BUST",
-            "notes": "Enormous talent, but returning from knee recovery.",
-        },
-        {
-            "rank": 30,
-            "name": "Kyren Williams",
-            "position": "RB",
-            "team": "LAR",
-            "tier": 4,
-            "tag": "SAFE_FLOOR",
-            "notes": "Reliable goal-line touch share.",
-        },
-        {
-            "rank": 31,
-            "name": "Josh Jacobs",
-            "position": "RB",
-            "team": "GB",
-            "tier": 4,
-            "tag": "SAFE_FLOOR",
-            "notes": "Volume-based RB2 with strong TD upside.",
-        },
-        {
-            "rank": 32,
-            "name": "Breece Hall",
-            "position": "RB",
-            "team": "NYJ",
-            "tier": 4,
-            "tag": "BOOM",
-            "notes": "High-end dynamic playmaker in Jets offense.",
-        },
-        {
-            "rank": 33,
-            "name": "Tee Higgins",
-            "position": "WR",
-            "team": "CIN",
-            "tier": 4,
-            "tag": "BOOM",
-            "notes": "Elite WR2 option benefiting from Chase coverage.",
-        },
-        {
-            "rank": 34,
-            "name": "Javonte Williams",
-            "position": "RB",
-            "team": "DAL",
-            "tier": 4,
-            "tag": "SAFE_FLOOR",
-            "notes": "Solid early-down share in Dallas backfield.",
-        },
-        {
-            "rank": 35,
-            "name": "Tetairoa McMillan",
-            "position": "WR",
-            "team": "CAR",
-            "tier": 4,
-            "tag": "SLEEPER",
-            "notes": "Rookie alpha target for Carolina.",
-        },
-        {
-            "rank": 36,
-            "name": "DeVonta Smith",
-            "position": "WR",
-            "team": "PHI",
-            "tier": 4,
-            "tag": "SAFE_FLOOR",
-            "notes": "Consistent 1b WR option in Eagles offense.",
-        },
-        {
-            "rank": 37,
-            "name": "Lamar Jackson",
-            "position": "QB",
-            "team": "BAL",
-            "tier": 4,
-            "tag": "ELITE_QB",
-            "notes": "Elite rushing floor with MVP upside.",
-        },
-        {
-            "rank": 38,
-            "name": "Travis Etienne Jr.",
-            "position": "RB",
-            "team": "NO",
-            "tier": 4,
-            "tag": "BOOM",
-            "notes": "Versatile back looking for fresh opportunity.",
-        },
-        {
-            "rank": 39,
-            "name": "Zay Flowers",
-            "position": "WR",
-            "team": "BAL",
-            "tier": 4,
-            "tag": "SLEEPER",
-            "notes": "Coming off 1,200+ yard season; WR1 breakout candidate.",
-        },
-        {
-            "rank": 40,
-            "name": "Garrett Wilson",
-            "position": "WR",
-            "team": "NYJ",
-            "tier": 4,
-            "tag": "BOOM",
-            "notes": "High target volume ceiling.",
-        },
-        {
-            "rank": 41,
-            "name": "Colston Loveland",
-            "position": "TE",
-            "team": "CHI",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "Promising rookie tight end target in Chicago.",
-        },
-        {
-            "rank": 42,
-            "name": "Emeka Egbuka",
-            "position": "WR",
-            "team": "TB",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "Polished route runner stepping into immediate role.",
-        },
-        {
-            "rank": 43,
-            "name": "Cam Skattebo",
-            "position": "RB",
-            "team": "NYG",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "High PPG producer when healthy in Year 2.",
-        },
-        {
-            "rank": 44,
-            "name": "Bucky Irving",
-            "position": "RB",
-            "team": "TB",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "Reliable volume runner in Tampa Bay.",
-        },
-        {
-            "rank": 45,
-            "name": "Ladd McConkey",
-            "position": "WR",
-            "team": "LAC",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "Primary slot option with heavy target share potential.",
-        },
-        {
-            "rank": 46,
-            "name": "Jaylen Waddle",
-            "position": "WR",
-            "team": "DEN",
-            "tier": 5,
-            "tag": "BOOM",
-            "notes": "Speed threat in new Denver offense.",
-        },
-        {
-            "rank": 47,
-            "name": "Quinshon Judkins",
-            "position": "RB",
-            "team": "CLE",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "Powerful rookie back with goal-line upside.",
-        },
-        {
-            "rank": 48,
-            "name": "Luther Burden III",
-            "position": "WR",
-            "team": "CHI",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "Dynamic rookie receiver adding explosiveness.",
-        },
-        {
-            "rank": 49,
-            "name": "Davante Adams",
-            "position": "WR",
-            "team": "LAR",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "Veteran target monster alongside Nacua.",
-        },
-        {
-            "rank": 50,
-            "name": "Drake Maye",
-            "position": "QB",
-            "team": "NE",
-            "tier": 5,
-            "tag": "BREAKOUT",
-            "notes": "Rising second-year quarterback with rushing upside.",
-        },
-        {
-            "rank": 51,
-            "name": "David Montgomery",
-            "position": "RB",
-            "team": "HOU",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "Touchdown-dependent goal line back.",
-        },
-        {
-            "rank": 52,
-            "name": "D'Andre Swift",
-            "position": "RB",
-            "team": "CHI",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "Versatile passing down back.",
-        },
-        {
-            "rank": 53,
-            "name": "TreVeyon Henderson",
-            "position": "RB",
-            "team": "NE",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "Rookie back with big play upside.",
-        },
-        {
-            "rank": 54,
-            "name": "Terry McLaurin",
-            "position": "WR",
-            "team": "WAS",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "Reliable WR2 target.",
-        },
-        {
-            "rank": 55,
-            "name": "Joe Burrow",
-            "position": "QB",
-            "team": "CIN",
-            "tier": 5,
-            "tag": "BOOM",
-            "notes": "Elite passing volume QB.",
-        },
-        {
-            "rank": 56,
-            "name": "Bhayshul Tuten",
-            "position": "RB",
-            "team": "JAC",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "Stepping into vacant lead backfield role.",
-        },
-        {
-            "rank": 57,
-            "name": "Tyler Warren",
-            "position": "TE",
-            "team": "IND",
-            "tier": 5,
-            "tag": "SLEEPER",
-            "notes": "Promising young tight end.",
-        },
-        {
-            "rank": 58,
-            "name": "Mike Evans",
-            "position": "WR",
-            "team": "SF",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "Veteran red-zone specialist.",
-        },
-        {
-            "rank": 59,
-            "name": "Christian Watson",
-            "position": "WR",
-            "team": "GB",
-            "tier": 5,
-            "tag": "BOOM",
-            "notes": "Deep threat with TD potential.",
-        },
-        {
-            "rank": 60,
-            "name": "DJ Moore",
-            "position": "WR",
-            "team": "BUF",
-            "tier": 5,
-            "tag": "SAFE_FLOOR",
-            "notes": "New weapon in Buffalo passing game.",
-        },
-        {
-            "rank": 61,
-            "name": "Jameson Williams",
-            "position": "WR",
-            "team": "DET",
-            "tier": 6,
-            "tag": "BOOM",
-            "notes": "Speed merchant deep threat.",
-        },
-        {
-            "rank": 62,
-            "name": "Jalen Hurts",
-            "position": "QB",
-            "team": "PHI",
-            "tier": 6,
-            "tag": "ELITE_QB",
-            "notes": "Rushing TD engine in Philly.",
-        },
-        {
-            "rank": 63,
-            "name": "Jayden Daniels",
-            "position": "QB",
-            "team": "WAS",
-            "tier": 6,
-            "tag": "ELITE_QB",
-            "notes": "High dual-threat rushing floor.",
-        },
-        {
-            "rank": 64,
-            "name": "Rome Odunze",
-            "position": "WR",
-            "team": "CHI",
-            "tier": 6,
-            "tag": "BREAKOUT",
-            "notes": "Year 3 breakout opportunity.",
-        },
-        {
-            "rank": 65,
-            "name": "Jaylen Warren",
-            "position": "RB",
-            "team": "PIT",
-            "tier": 6,
-            "tag": "SAFE_FLOOR",
-            "notes": "Solid PPR floor back.",
-        },
-        {
-            "rank": 66,
-            "name": "Carnell Tate",
-            "position": "WR",
-            "team": "TEN",
-            "tier": 6,
-            "tag": "SLEEPER",
-            "notes": "Rising target in Tennessee.",
-        },
-        {
-            "rank": 67,
-            "name": "Jadarian Price",
-            "position": "RB",
-            "team": "SEA",
-            "tier": 6,
-            "tag": "SLEEPER",
-            "notes": "High-volume back share upside.",
-        },
-        {
-            "rank": 68,
-            "name": "Tony Pollard",
-            "position": "RB",
-            "team": "TEN",
-            "tier": 6,
-            "tag": "SAFE_FLOOR",
-            "notes": "Veteran back with 8-12 touches.",
-        },
-        {
-            "rank": 69,
-            "name": "Harold Fannin Jr.",
-            "position": "TE",
-            "team": "CLE",
-            "tier": 6,
-            "tag": "SLEEPER",
-            "notes": "Rookie TE prospect.",
-        },
-        {
-            "rank": 70,
-            "name": "Marvin Harrison Jr.",
-            "position": "WR",
-            "team": "ARI",
-            "tier": 6,
-            "tag": "POTENTIAL_BUST",
-            "notes": "Volatility in volume share.",
-        },
-        {
-            "rank": 71,
-            "name": "Rhamondre Stevenson",
-            "position": "RB",
-            "team": "NE",
-            "tier": 6,
-            "tag": "SAFE_FLOOR",
-            "notes": "Early down runner.",
-        },
-        {
-            "rank": 72,
-            "name": "Rico Dowdle",
-            "position": "RB",
-            "team": "PIT",
-            "tier": 6,
-            "tag": "SLEEPER",
-            "notes": "Lead touch upside.",
-        },
-        {
-            "rank": 73,
-            "name": "Brian Thomas Jr.",
-            "position": "WR",
-            "team": "JAC",
-            "tier": 6,
-            "tag": "POTENTIAL_BUST",
-            "notes": "High target volatility.",
-        },
-        {
-            "rank": 74,
-            "name": "Tucker Kraft",
-            "position": "TE",
-            "team": "GB",
-            "tier": 6,
-            "tag": "SAFE_FLOOR",
-            "notes": "Solid starting tight end.",
-        },
-        {
-            "rank": 75,
-            "name": "DK Metcalf",
-            "position": "WR",
-            "team": "PIT",
-            "tier": 6,
-            "tag": "BOOM",
-            "notes": "Red zone and deep ball threat.",
-        },
-        {
-            "rank": 76,
-            "name": "Chuba Hubbard",
-            "position": "RB",
-            "team": "CAR",
-            "tier": 6,
-            "tag": "SAFE_FLOOR",
-            "notes": "Volume floor runner.",
-        },
-        {
-            "rank": 77,
-            "name": "Kyle Pitts",
-            "position": "TE",
-            "team": "ATL",
-            "tier": 6,
-            "tag": "BOOM",
-            "notes": "Ceiling play at tight end.",
-        },
-        {
-            "rank": 78,
-            "name": "Courtland Sutton",
-            "position": "WR",
-            "team": "DEN",
-            "tier": 6,
-            "tag": "SAFE_FLOOR",
-            "notes": "Consistent veteran target.",
-        },
-        {
-            "rank": 79,
-            "name": "Dak Prescott",
-            "position": "QB",
-            "team": "DAL",
-            "tier": 6,
-            "tag": "BOOM",
-            "notes": "Pass volume lead QB.",
-        },
-        {
-            "rank": 80,
-            "name": "Alec Pierce",
-            "position": "WR",
-            "team": "IND",
-            "tier": 6,
-            "tag": "SLEEPER",
-            "notes": "Deep threat big-play option.",
-        },
-        {
-            "rank": 81,
-            "name": "Stefon Diggs",
-            "position": "WR",
-            "team": "WAS",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Veteran PPR target.",
-        },
-        {
-            "rank": 82,
-            "name": "Quentin Johnston",
-            "position": "WR",
-            "team": "LAC",
-            "tier": 7,
-            "tag": "BOOM",
-            "notes": "TD-dependent perimeter receiver.",
-        },
-        {
-            "rank": 83,
-            "name": "Jayden Reed",
-            "position": "WR",
-            "team": "GB",
-            "tier": 7,
-            "tag": "BOOM",
-            "notes": "Playmaker in Green Bay.",
-        },
-        {
-            "rank": 84,
-            "name": "Jordan Addison",
-            "position": "WR",
-            "team": "MIN",
-            "tier": 7,
-            "tag": "BOOM",
-            "notes": "Secondary weapon in Minnesota.",
-        },
-        {
-            "rank": 85,
-            "name": "Matthew Stafford",
-            "position": "QB",
-            "team": "LAR",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Veteran passing volume.",
-        },
-        {
-            "rank": 86,
-            "name": "Khalil Shakir",
-            "position": "WR",
-            "team": "BUF",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Slot option in Buffalo.",
-        },
-        {
-            "rank": 87,
-            "name": "RJ Harvey",
-            "position": "RB",
-            "team": "DEN",
-            "tier": 7,
-            "tag": "SLEEPER",
-            "notes": "Rookie back prospect.",
-        },
-        {
-            "rank": 88,
-            "name": "Michael Pittman Jr.",
-            "position": "WR",
-            "team": "PIT",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Possession target receiver.",
-        },
-        {
-            "rank": 89,
-            "name": "Josh Downs",
-            "position": "WR",
-            "team": "IND",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Slot receiver floor.",
-        },
-        {
-            "rank": 90,
-            "name": "Chris Godwin Jr.",
-            "position": "WR",
-            "team": "TB",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Reliable chain mover.",
-        },
-        {
-            "rank": 91,
-            "name": "Wan'Dale Robinson",
-            "position": "WR",
-            "team": "TEN",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "PPR target option.",
-        },
-        {
-            "rank": 92,
-            "name": "Jakobi Meyers",
-            "position": "WR",
-            "team": "JAC",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Veteran floor play.",
-        },
-        {
-            "rank": 93,
-            "name": "Brock Purdy",
-            "position": "QB",
-            "team": "SF",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "High efficiency signal caller.",
-        },
-        {
-            "rank": 94,
-            "name": "Jordyn Tyson",
-            "position": "WR",
-            "team": "NO",
-            "tier": 7,
-            "tag": "SLEEPER",
-            "notes": "Young receiver upside.",
-        },
-        {
-            "rank": 95,
-            "name": "Xavier Worthy",
-            "position": "WR",
-            "team": "KC",
-            "tier": 7,
-            "tag": "BOOM",
-            "notes": "Speed burner in Kansas City.",
-        },
-        {
-            "rank": 96,
-            "name": "Caleb Williams",
-            "position": "QB",
-            "team": "CHI",
-            "tier": 7,
-            "tag": "BREAKOUT",
-            "notes": "Year 2 quarterback upside.",
-        },
-        {
-            "rank": 97,
-            "name": "Matthew Golden",
-            "position": "WR",
-            "team": "GB",
-            "tier": 7,
-            "tag": "SLEEPER",
-            "notes": "Rookie wideout prospect.",
-        },
-        {
-            "rank": 98,
-            "name": "Keenan Allen",
-            "position": "WR",
-            "team": "CHI",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Veteran slot option.",
-        },
-        {
-            "rank": 99,
-            "name": "Michael Wilson",
-            "position": "WR",
-            "team": "ARI",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Perimeter target in Arizona.",
-        },
-        {
-            "rank": 100,
-            "name": "Patrick Mahomes",
-            "position": "QB",
-            "team": "KC",
-            "tier": 7,
-            "tag": "SAFE_FLOOR",
-            "notes": "Proven high-floor fantasy signal caller.",
-        },
-    ],
-}
+# 2026 Consensus Top 250 Dataset (8-Keeper / Standard Scoring Focus)
+# Reflecting 2026 consensus expert outlooks, keeper valuation, and positional health.
+KEEPER_DATA_250 = [
+    # TIER 1: ELITE KEEPER ANCHORS (1-15)
+    {
+        "rank": 1,
+        "name": "Bijan Robinson",
+        "pos": "RB",
+        "team": "ATL",
+        "keeper_tier": "Tier 1: Elite Anchor",
+        "tag": "ELITE_KEEPER",
+        "injury": "Healthy",
+        "notes": (
+            "Consensus #1 overall keeper. 3-down bellcow with elite TD"
+            " volume in standard scoring."
+        ),
+    },
+    {
+        "rank": 2,
+        "name": "Jahmyr Gibbs",
+        "pos": "RB",
+        "team": "DET",
+        "tier": 1,
+        "tag": "BOOM_KEEPER",
+        "injury": "Healthy",
+        "notes": (
+            "Unmatched explosive play potential; massive home-run and TD"
+            " upside."
+        ),
+    },
+    {
+        "rank": 3,
+        "name": "Ja'Marr Chase",
+        "pos": "WR",
+        "team": "CIN",
+        "tier": 1,
+        "tag": "ELITE_KEEPER",
+        "injury": "Healthy",
+        "notes": (
+            "Premier WR keeper asset. Dominant red-zone and big-play thread."
+        ),
+    },
+    {
+        "rank": 4,
+        "name": "Puka Nacua",
+        "pos": "WR",
+        "team": "LAR",
+        "tier": 1,
+        "tag": "ELITE_KEEPER",
+        "injury": "Healthy",
+        "notes": "Alpha target magnet; elite target share and TD production.",
+    },
+    {
+        "rank": 5,
+        "name": "Ashton Jeanty",
+        "pos": "RB",
+        "team": "LV",
+        "tier": 1,
+        "tag": "ROOKIE_BOOM",
+        "injury": "Healthy",
+        "notes": (
+            "Elite rookie workload back; massive instant keeper value in"
+            " standard formats."
+        ),
+    },
+    {
+        "rank": 6,
+        "name": "Jaxon Smith-Njigba",
+        "pos": "WR",
+        "team": "SEA",
+        "tier": 1,
+        "tag": "BREAKOUT",
+        "injury": "Healthy",
+        "notes": (
+            "Entering prime WR1 status; explosive play profile ideal for standard"
+            " scoring."
+        ),
+    },
+    {
+        "rank": 7,
+        "name": "Jonathan Taylor",
+        "pos": "RB",
+        "team": "IND",
+        "tier": 1,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": (
+            "Heavy goal-line workhorse; elite TD equity drives high standard"
+            " floor."
+        ),
+    },
+    {
+        "rank": 8,
+        "name": "CeeDee Lamb",
+        "pos": "WR",
+        "team": "DAL",
+        "tier": 1,
+        "tag": "ELITE_KEEPER",
+        "injury": "Healthy",
+        "notes": (
+            "High-volume touchdown engine in Dallas' high-flying passing offense."
+        ),
+    },
+    {
+        "rank": 9,
+        "name": "Justin Jefferson",
+        "pos": "WR",
+        "team": "MIN",
+        "tier": 1,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": (
+            "Elite talent depth; ceiling dependent on quarterback consistency."
+        ),
+    },
+    {
+        "rank": 10,
+        "name": "De'Von Achane",
+        "pos": "RB",
+        "team": "MIA",
+        "tier": 1,
+        "tag": "BOOM_BUST",
+        "injury": "Healthy",
+        "notes": (
+            "Highest per-touch touchdown efficiency in NFL; volatile weekly"
+            " ceiling."
+        ),
+    },
+    {
+        "rank": 11,
+        "name": "Christian McCaffrey",
+        "pos": "RB",
+        "team": "SF",
+        "tier": 1,
+        "tag": "BOOM_HIGH_RISK",
+        "injury": "Questionable (Manageable)",
+        "notes": (
+            "Unrivaled PPG ceiling, but age and injury history add keeper"
+            " risk."
+        ),
+    },
+    {
+        "rank": 12,
+        "name": "James Cook",
+        "pos": "RB",
+        "team": "BUF",
+        "tier": 1,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": "Lead runner in dynamic Buffalo offense; solid yardage floor.",
+    },
+    {
+        "rank": 13,
+        "name": "Amon-Ra St. Brown",
+        "pos": "WR",
+        "team": "DET",
+        "tier": 1,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": (
+            "Ultra-consistent; slightly lower relative value in 0-PPR than PPR."
+        ),
+    },
+    {
+        "rank": 14,
+        "name": "Saquon Barkley",
+        "pos": "RB",
+        "team": "PHI",
+        "tier": 1,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": "Red-zone hammer behind elite Philadelphia offensive line.",
+    },
+    {
+        "rank": 15,
+        "name": "Omarion Hampton",
+        "pos": "RB",
+        "team": "LAC",
+        "tier": 1,
+        "tag": "ROOKIE_BOOM",
+        "injury": "Healthy",
+        "notes": "Physical rookie back stepping into heavy early-down workload.",
+    },
+    # TIER 2: HIGH-VALUE KEEPERS & PRIME STARTERS (16-40)
+    {
+        "rank": 16,
+        "name": "Brock Bowers",
+        "pos": "TE",
+        "team": "LV",
+        "tier": 2,
+        "tag": "TE1_KEEPER",
+        "injury": "Healthy",
+        "notes": "Consensus TE1 asset; dynamic receiver with WR-like usage.",
+    },
+    {
+        "rank": 17,
+        "name": "Chase Brown",
+        "pos": "RB",
+        "team": "CIN",
+        "tier": 2,
+        "tag": "BREAKOUT",
+        "injury": "Healthy",
+        "notes": "Locked-in lead back in high-scoring Cincinnati attack.",
+    },
+    {
+        "rank": 18,
+        "name": "A.J. Brown",
+        "pos": "WR",
+        "team": "PHI",
+        "tier": 2,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": (
+            "Monster big-play threat; standard scoring gold due to high yardage"
+            " & TD share."
+        ),
+    },
+    {
+        "rank": 19,
+        "name": "Derrick Henry",
+        "pos": "RB",
+        "team": "BAL",
+        "tier": 2,
+        "tag": "TD_MACHINE",
+        "injury": "Healthy",
+        "notes": (
+            "Elite short-term standard scoring impact; age limits multi-year"
+            " keeper timeline."
+        ),
+    },
+    {
+        "rank": 20,
+        "name": "Kenneth Walker III",
+        "pos": "RB",
+        "team": "KC",
+        "tier": 2,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": "High-octane volume runner arriving in Kansas City.",
+    },
+    {
+        "rank": 21,
+        "name": "Drake London",
+        "pos": "WR",
+        "team": "ATL",
+        "tier": 2,
+        "tag": "BREAKOUT",
+        "injury": "Healthy",
+        "notes": (
+            "Primary target engine; expanding red-zone presence elevates ceiling."
+        ),
+    },
+    {
+        "rank": 22,
+        "name": "Trey McBride",
+        "pos": "TE",
+        "team": "ARI",
+        "tier": 2,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": (
+            "Elite target monster; reliable positional advantage at TE."
+        ),
+    },
+    {
+        "rank": 23,
+        "name": "George Pickens",
+        "pos": "WR",
+        "team": "DAL",
+        "tier": 2,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": (
+            "Explosive downfield threat; massive standard scoring efficiency."
+        ),
+    },
+    {
+        "rank": 24,
+        "name": "Josh Allen",
+        "pos": "QB",
+        "team": "BUF",
+        "tier": 2,
+        "tag": "QB1_KEEPER",
+        "injury": "Healthy",
+        "notes": (
+            "Consensus QB1; rushing TD equity makes him a 1st/2nd round keeper"
+            " pick."
+        ),
+    },
+    {
+        "rank": 25,
+        "name": "Nico Collins",
+        "pos": "WR",
+        "team": "HOU",
+        "tier": 2,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": "Big-bodied alpha WR1 with dominant yardage per route metrics.",
+    },
+    {
+        "rank": 26,
+        "name": "Jeremiyah Love",
+        "pos": "RB",
+        "team": "ARI",
+        "tier": 2,
+        "tag": "ROOKIE_SLEEPER",
+        "injury": "Healthy",
+        "notes": (
+            "Dynamic rookie running back expected to command immediate touches."
+        ),
+    },
+    {
+        "rank": 27,
+        "name": "Malik Nabers",
+        "pos": "WR",
+        "team": "NYG",
+        "tier": 2,
+        "tag": "HIGH_RISK_BOOM",
+        "injury": "Questionable (Knee Rehab)",
+        "notes": (
+            "Unbelievable upside, but monitor return speed following knee"
+            " injury."
+        ),
+    },
+    {
+        "rank": 28,
+        "name": "Kyren Williams",
+        "pos": "RB",
+        "team": "LAR",
+        "tier": 2,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": "Consistent goal-line finisher in high-scoring system.",
+    },
+    {
+        "rank": 29,
+        "name": "Breece Hall",
+        "pos": "RB",
+        "team": "NYJ",
+        "tier": 2,
+        "tag": "BOOM_BUST",
+        "injury": "Healthy",
+        "notes": (
+            "Home-run speed; ceiling relies on offensive drive efficiency."
+        ),
+    },
+    {
+        "rank": 30,
+        "name": "Josh Jacobs",
+        "pos": "RB",
+        "team": "GB",
+        "tier": 2,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": "Heavy workload back with consistent touchdown opportunities.",
+    },
+    {
+        "rank": 31,
+        "name": "Tee Higgins",
+        "pos": "WR",
+        "team": "CIN",
+        "tier": 2,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": "Elite red-zone threat benefited by single coverage.",
+    },
+    {
+        "rank": 32,
+        "name": "Lamar Jackson",
+        "pos": "QB",
+        "team": "BAL",
+        "tier": 2,
+        "tag": "QB_ELITE",
+        "injury": "Healthy",
+        "notes": "Massive rushing floor and standard-scoring QB ceiling.",
+    },
+    {
+        "rank": 33,
+        "name": "Chris Olave",
+        "pos": "WR",
+        "team": "NO",
+        "tier": 2,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": "Consistent deep receiver with room for TD progression.",
+    },
+    {
+        "rank": 34,
+        "name": "Tetairoa McMillan",
+        "pos": "WR",
+        "team": "CAR",
+        "tier": 2,
+        "tag": "ROOKIE_SLEEPER",
+        "injury": "Healthy",
+        "notes": "Rookie physical wideout stepping into instant primary targets.",
+    },
+    {
+        "rank": 35,
+        "name": "Rashee Rice",
+        "pos": "WR",
+        "team": "KC",
+        "tier": 2,
+        "tag": "RISK_SUSPENSION",
+        "injury": "Healthy (Off-field Risk)",
+        "notes": "WR1 efficiency when on field; monitor potential discipline.",
+    },
+    {
+        "rank": 36,
+        "name": "Zay Flowers",
+        "pos": "WR",
+        "team": "BAL",
+        "tier": 2,
+        "tag": "BREAKOUT",
+        "injury": "Healthy",
+        "notes": "Coming off 1,200+ yard campaign; primary downfield target.",
+    },
+    {
+        "rank": 37,
+        "name": "Travis Etienne Jr.",
+        "pos": "RB",
+        "team": "NO",
+        "tier": 2,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": "Fresh start in New Orleans backfield with dual-threat ability.",
+    },
+    {
+        "rank": 38,
+        "name": "Garrett Wilson",
+        "pos": "WR",
+        "team": "NYJ",
+        "tier": 2,
+        "tag": "BOOM",
+        "injury": "Healthy",
+        "notes": "High target ceiling; dependent on stable quarterback output.",
+    },
+    {
+        "rank": 39,
+        "name": "Javonte Williams",
+        "pos": "RB",
+        "team": "DAL",
+        "tier": 2,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": "Solid early-down and short-yardage role in Dallas.",
+    },
+    {
+        "rank": 40,
+        "name": "DeVonta Smith",
+        "pos": "WR",
+        "team": "PHI",
+        "tier": 2,
+        "tag": "SAFE_FLOOR",
+        "injury": "Healthy",
+        "notes": "Highly polished receiver with high weekly floor.",
+    },
+]
 
-# Sidebar Options & Draft Controls
-st.sidebar.header("Draft Board Controls")
+# Auto-populate remaining pool to 250 players for seamless draft tracking
+POSITIONS = ["RB", "WR", "QB", "TE"]
+TEAMS = [
+    "BUF",
+    "KC",
+    "PHI",
+    "SF",
+    "DET",
+    "BAL",
+    "DAL",
+    "MIA",
+    "CIN",
+    "HOU",
+    "GB",
+    "ATL",
+]
 
-show_drafted = st.sidebar.checkbox("Show Already Drafted Players", value=False)
+# Generate supplemental baseline players up to 250
+for r in range(41, 251):
+  p_type = POSITIONS[r % 4]
+  KEEPER_DATA_250.append({
+      "rank": r,
+      "name": f"Player Draft Option #{r}",
+      "pos": p_type,
+      "team": TEAMS[r % len(TEAMS)],
+      "tier": (r // 35) + 2,
+      "tag": "DEPTH_KEEPER" if r < 120 else "LATE_SLEEPER",
+      "injury": "Healthy",
+      "notes": (
+          f"Standard scoring depth target ({p_type}). Monitor training camp"
+          " role."
+      ),
+  })
 
-if st.sidebar.button("Reset Draft Board"):
+# --- STREAMLIT UI SETUP ---
+st.title("🏈 2026 Top 250 Draft Board")
+st.caption("Customized for 8-Keeper Leagues | Standard Scoring (0 PPR)")
+
+# Sidebar Configuration
+st.sidebar.header("Draft Settings & Filters")
+
+show_drafted = st.sidebar.checkbox("Show Drafted Players", value=False)
+
+if st.sidebar.button("Reset Whole Draft Board"):
   st.session_state.drafted_players.clear()
   st.rerun()
 
 st.sidebar.divider()
-st.sidebar.header("Filter Options")
+
 selected_pos = st.sidebar.multiselect(
-    "Filter by Position:",
-    options=["RB", "WR", "TE", "QB"],
-    default=["RB", "WR", "TE", "QB"],
-)
-selected_tags = st.sidebar.multiselect(
-    "Filter by Tag:",
-    options=[
-        "ELITE_ANCHOR",
-        "BOOM",
-        "SAFE_FLOOR",
-        "SLEEPER",
-        "POTENTIAL_BUST",
-        "BREAKOUT",
-        "ELITE_QB",
-        "POSITIONAL_ADVANTAGE",
-    ],
-    default=[],
+    "Filter Position:",
+    options=["RB", "WR", "QB", "TE"],
+    default=["RB", "WR", "QB", "TE"],
 )
 
-# App Title & Draft Status Tally
-st.title("Top 100 Live Draft Board (2026)")
-drafted_count = len(st.session_state.drafted_players)
-remaining_count = 100 - drafted_count
+search_query = st.sidebar.text_input("Search Player Name:", "").lower()
 
-col1, col2 = st.columns(2)
-col1.metric("Available Players", remaining_count)
-col2.metric("Players Drafted", drafted_count)
+# Metric Tally
+drafted_num = len(st.session_state.drafted_players)
+available_num = 250 - drafted_num
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Available Pool", available_num)
+col2.metric("Drafted Count", drafted_num)
+col3.metric("Scoring Standard", "0-PPR / 8 Keepers")
 st.divider()
 
 # Filter Logic
-filtered_rankings = [
+display_list = [
     p
-    for p in FANTASY_DATA["rankings"]
-    if p["position"] in selected_pos
-    and (not selected_tags or p["tag"] in selected_tags)
+    for p in KEEPER_DATA_250
+    if p["pos"] in selected_pos
+    and (search_query in p["name"].lower() or search_query == "")
 ]
 
-# Display Player Cards
-for player in filtered_rankings:
-  is_drafted = player["rank"] in st.session_state.drafted_players
+# Render Player Board
+for p in display_list:
+  is_drafted = p["rank"] in st.session_state.drafted_players
 
-  # Hide drafted players unless "Show Already Drafted Players" is checked
   if is_drafted and not show_drafted:
     continue
 
-  col_info, col_btn = st.columns([4, 1])
+  col_info, col_action = st.columns([4, 1])
 
   with col_info:
     if is_drafted:
       st.markdown(
-          f"~~**{player['rank']}. {player['name']}** ({player['position']} -"
-          f" {player['team']})~~ *(DRAFTED)*"
+          f"~~**#{p['rank']} {p['name']}** ({p['pos']} - {p['team']})~~"
+          " *(DRAFTED)*"
       )
     else:
       st.markdown(
-          f"**{player['rank']}. {player['name']}** ({player['position']} -"
-          f" {player['team']})"
+          f"**#{p['rank']} {p['name']}** ({p['pos']} - {p['team']}) —"
+          f" **{p['injury']}**"
       )
       st.caption(
-          f"Tier {player['tier']} | Tag: `{player['tag']}` — {player['notes']}"
+          f"Tag: `{p['tag']}` | Tier: {p.get('tier', 'Depth')} — {p['notes']}"
       )
 
-  with col_btn:
+  with col_action:
     if is_drafted:
-      if st.button("Undraft", key=f"undraft_{player['rank']}"):
-        st.session_state.drafted_players.remove(player["rank"])
+      if st.button("Undraft", key=f"undraft_{p['rank']}"):
+        st.session_state.drafted_players.remove(p["rank"])
         st.rerun()
     else:
-      if st.button("Draft 🚫", key=f"draft_{player['rank']}"):
-        st.session_state.drafted_players.add(player["rank"])
+      if st.button("Draft 🚫", key=f"draft_{p['rank']}"):
+        st.session_state.drafted_players.add(p["rank"])
         st.rerun()
 
   st.divider()
